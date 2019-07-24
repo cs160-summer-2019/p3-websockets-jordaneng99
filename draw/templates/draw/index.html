@@ -12,25 +12,72 @@
 
     <style type="text/css">
     </style>
-
-</head>
-<body>
+  </body>
     <!-- You may change the dimensions of this canvas -->
-    <canvas id="myCanvas" width="750px" height="750px"></canvas>
+    <canvas id="myCanvas" width="1000px" height="1000px"></canvas>
 </body>
 <script>
-
-    // setting up the canvas and one paper tool
+  
     var canvas = document.getElementById('myCanvas');
     paper.setup(canvas);
     var tool = new paper.Tool();
-
+    
     // getting the URL (you may want to use for Exercise 3)
     var url = window.location.href;
-
-    // var socket = new WebSocket(
-    //     'wss://<your url here>/ws/draw');
-
-
+    var socket = new WebSocket('wss://websocket-jordaneng195773.codeanyapp.com/ws/draw');
+ 
+    var thisID = Math.floor(Math.random() * 100);
+    
+    function color() {
+      return 'rgb(' + (Math.floor(Math.random() * 256)) + ',' + (Math.floor(Math.random() * 256)) + ',' + (Math.floor(Math.random() * 256)) + ')';
+    }
+  
+    var path = new paper.Path();
+    var pathColor = color();
+    path.strokeWidth = 10;
+    path.strokeColor = pathColor;
+    
+    var paths = {userID : path}
+    
+    if (url.indexOf("small") >= 0) {
+      socket.onmessage = function(m) {
+        return;
+      };
+    
+    } else {
+      socket.onmessage = function(m) {
+        var msg = m.data;
+        var parsed = JSON.parse(msg);
+        if(parsed.user in paths) {
+          paths[parsed.user].add(new paper.Point(parsed.x, parsed.y));
+        } else {
+          paths[parsed.user] = new paper.Path();
+          paths[parsed.user].strokeColor = parsed.color;
+          paths[parsed.user].strokeWidth = 10;
+          paths[parsed.user].add(new paper.Point(parsed.x, parsed.y));
+        }
+      }
+    }
+ 
+    tool.onMouseMove = function (event) {
+      var info = {x: event.point.x, y: event.point.y, color: pathColor, user: thisID};
+      socket.send(JSON.stringify(info));
+      path.add(event.point);
+    }
+    
+    window.addEventListener('deviceorientation', function(event) {
+      var tilt = event.gamma;
+      if (Math.abs(tilt) > 50) {
+        paths[thisID].strokeColor = color();
+      }
+    });
+      
+    window.addEventListener('devicemotion', function(event) {
+      var xDirection = event.acceleration.x;
+      if (Math.abs(xDirection) > 20) {
+        paper.project.clear();
+        paper.setup(canvas);
+      }
+    });
 </script>
-</html>
+</html> 
